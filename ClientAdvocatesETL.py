@@ -2,6 +2,8 @@ import sys
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
+from pyspark.shell import sqlContext
+from pyspark.sql import *
 from awsglue.context import GlueContext
 from awsglue.job import Job
 
@@ -10,6 +12,11 @@ from awsglue.job import Job
 # Date: 28 January 2020
 # For AWS Glue for Advotics ETL Process
 
+# Flow:
+# 1. Define all the input table as 1 dataframe
+# 2. Create new dataframe that include all data that related to target table
+# 3. Map that dataframe to related target table
+
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
 
@@ -17,12 +24,14 @@ sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
+
+
 job.init(args['JOB_NAME'], args)
 
 # Defining Data Source
 
 ## @type: DataSource
-## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_client_advocates", transformation_ctx = "datasource0"]
+## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_client_advocates", transformation_ctx = "client_advocates"]
 ## @return: client_advocates
 ## @inputs: []
 client_advocates = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx-cluster",
@@ -30,7 +39,7 @@ client_advocates = glueContext.create_dynamic_frame.from_catalog(database = "adv
                                                                  transformation_ctx = "client_advocates")
 
 ## @type: DataSource
-## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_client_advocate_data", transformation_ctx = "<transformation_ctx>"]
+## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_client_advocate_data", transformation_ctx = "client_advocate_data"]
 ## @return: client_advocate_data
 ## @inputs: []
 client_advocate_data = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx-cluster",
@@ -38,7 +47,7 @@ client_advocate_data = glueContext.create_dynamic_frame.from_catalog(database = 
                                                                      transformation_ctx = "client_advocate_data")
 
 ## @type: DataSource
-## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_advocates", transformation_ctx = "<transformation_ctx>"]
+## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_advocates", transformation_ctx = "advocates"]
 ## @return: advocates
 ## @inputs: []
 advocates = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx-cluster",
@@ -46,7 +55,7 @@ advocates = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx-c
                                                           transformation_ctx = "advocates")
 
 ## @type: DataSource
-## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_advocate_data", transformation_ctx = "<transformation_ctx>"]
+## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_advocate_data", transformation_ctx = "advocates_data"]
 ## @return: advocates_data
 ## @inputs: []
 advocates_data = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx-cluster",
@@ -54,7 +63,7 @@ advocates_data = glueContext.create_dynamic_frame.from_catalog(database = "advo-
                                                                transformation_ctx = "advocates_data")
 
 ## @type: DataSource
-## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_user_logins", transformation_ctx = "<transformation_ctx>"]
+## @args: [database = "advo-sbx-cluster", table_name = "adv_identity_user_logins", transformation_ctx = "user_logins"]
 ## @return: user_logins
 ## @inputs: []
 user_logins = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx-cluster",
@@ -62,6 +71,7 @@ user_logins = glueContext.create_dynamic_frame.from_catalog(database = "advo-sbx
                                                             transformation_ctx = "user_logins")
 
 # Create ETL Process before Mapping to ApplyMapping
+# TODO: solve how to create a mapping without joinning table
 
 ## @type: ApplyMapping
 ## @args: [mapping = [("creation_time", "timestamp", "creation_time", "timestamp"), ("role", "string", "phone", "string"), ("advocate_id", "int", "advocate_id", "int"), ("sales_group_id", "int", "sales_group_id", "int"), ("xl_msisdn", "string", "province", "string"), ("outlet_name", "string", "outlet_name", "string"), ("created_by", "string", "regency", "string"), ("client_id", "int", "client_id", "int"), ("parent_advocate", "int", "parent_advocate", "int"), ("client_ref_id", "string", "client_ref_id", "string"), ("zone_id", "int", "creation_date_index", "int"), ("last_updated_by", "string", "advocate_data", "string"), ("last_updated_time", "timestamp", "client_advocate_creation_time", "timestamp"), ("advocate_type", "string", "advocate_type", "string"), ("work_entity", "int", "registered_by", "int"), ("status", "string", "status", "string"), ("loki_index", "long", "loki_index", "long")], transformation_ctx = "applymapping1"]
@@ -88,8 +98,9 @@ resolvechoice3 = ResolveChoice.apply(frame = selectfields2, choice = "MATCH_CATA
 resolvechoice4 = ResolveChoice.apply(frame = resolvechoice3, choice = "make_cols", transformation_ctx = "resolvechoice4")
 
 ## @type: DataSink
-## @args: [database = "advo-sbx-dw", table_name = "advotics_dw_dw_raw_client_advocates", transformation_ctx = "datasink5"]
-## @return: datasink5
+## @args: [database = "advo-sbx-dw", table_name = "advotics_dw_dw_raw_client_advocates", transformation_ctx = "dw_raw_client_advocates"]
+## @return: dw_raw_client_advocates
 ## @inputs: [frame = resolvechoice4]
-datasink5 = glueContext.write_dynamic_frame.from_catalog(frame = resolvechoice4, database = "advo-sbx-dw", table_name = "advotics_dw_dw_raw_client_advocates", transformation_ctx = "datasink5")
+dw_raw_client_advocates = glueContext.write_dynamic_frame.from_catalog(frame = resolvechoice4, database = "advo-sbx-dw", table_name = "advotics_dw_dw_raw_client_advocates", transformation_ctx = "dw_raw_client_advocates")
+
 job.commit()
