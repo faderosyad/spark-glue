@@ -1,5 +1,8 @@
 import sys
-from awsglue.transforms import *
+# from awsglue.transforms import *
+from awsglue.transforms.apply_mapping import ApplyMapping
+from awsglue.transforms.field_transforms import Join, SelectFields
+from awsglue.transforms.resolve_choice import ResolveChoice
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from pyspark.sql import *
