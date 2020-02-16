@@ -1,15 +1,17 @@
 import sys
-from awsglue.transforms import *
+# from awsglue.transforms import *
+from awsglue.transforms.apply_mapping import ApplyMapping
+from awsglue.transforms.field_transforms import Join, SelectFields
+from awsglue.transforms.resolve_choice import ResolveChoice
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
+from pyspark.sql import *
 from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsglue.dynamicframe import DynamicFrame
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType
-
-
 
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
